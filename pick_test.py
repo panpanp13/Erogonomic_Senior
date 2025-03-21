@@ -8,53 +8,6 @@ import logging
 import mediapipe as mp
 from Test_fun.Test_all import *
 
-def save_point_cloud(pcd, filename="output.ply"):
-    """
-    Saves the given point cloud to a PLY file.
-
-    Parameters:
-    -----------
-    pcd : open3d.geometry.PointCloud
-        The point cloud object to save.
-    filename : str
-        The output filename (should end in .ply).
-    
-    Returns:
-    --------
-    None
-    """
-    # Ensure the point cloud is valid
-    if not isinstance(pcd, o3d.geometry.PointCloud):
-        print("Error: Input is not a valid Open3D point cloud object.")
-        return
-
-    if len(pcd.points) == 0:
-        print("Warning: Point cloud is empty. No file will be saved.")
-        return
-
-    # Save the point cloud to a PLY file
-    try:
-        o3d.io.write_point_cloud(filename, pcd)
-        print(f"Point cloud successfully saved to {filename}")
-    except Exception as e:
-        print(f"Error saving point cloud: {e}")
-
-def initialize_yolo(model_path="yolov8n.pt"):
-    return YOLO(model_path)
-
-
-# Initialize Kinect
-def initialize_kinect(config_path):
-    kinectsensor = o3d.io.AzureKinectSensor(o3d.io.read_azure_kinect_sensor_config(config_path))
-    
-    if not kinectsensor.connect(0):
-        print("Failed to connect to Azure Kinect! Check if the device is plugged in.")
-        exit()
-    
-    print("Azure Kinect connected successfully!")
-    return kinectsensor
-
-
 # Capture frame from Kinect
 def capture_frame(kinectsensor):
     frame_data = kinectsensor.capture_frame(True)
@@ -152,12 +105,6 @@ def draw_detections(frame, depth_frame, results, pcd, intrin,show_pcd,rotation_m
                     marker = create_marker_at(pt_pcd, radius=0.05, color=(1, 0, 0))
                     if show_pcd =="on":
                         pass
-                        # print(f'object_ Po 3D : {pt_pcd}')
-                        # o3d.visualization.draw_geometries([pcd, marker])
-
-                    # Show the point cloud + marker
-                    # WARNING: This will open a new O3D window each frame
-                    # So typically you'd do this once or in a dedicated Visualizer
                     
 
     return frame,marker,pt_pcd
@@ -181,12 +128,6 @@ def create_point_cloud(color_frame, depth_frame):
                    [0, -1, 0, 0], 
                    [0, 0, -1, 0], 
                    [0, 0,  0, 1]])
-    # flip Z to y 
-    # pcd.transform([[1, 0,  0, 0], 
-    #                [0, 0, 1, 0], 
-    #                [0, 1, 0, 0], 
-    #                [0, 0,  0, 1]])
-
     return pcd, rgbd_image
 #-------------------convert 2D point to 3D-----------------
 def pixel_to_3d(u, v, depth_mm, intrinsics):
@@ -215,15 +156,6 @@ def create_marker_at(point_3d, radius=0.01, color=(1, 1, 1)):
     sphere_pcd.paint_uniform_color(color)
     return sphere_pcd
 
-
-    
-# flip z to y 
-# FLIP_TRANSFORM = np.array([
-#     [1,  0,  0,  0],
-#     [0, 0,  1,  0],
-#     [0,  1, 0,  0],
-#     [0,  0,  0,  1]
-# ], dtype=float)
 FLIP_TRANSFORM = np.array([
     [1,  0,  0,  0],
     [0, -1,  0,  0],
@@ -274,9 +206,6 @@ def pick_point_from_pcd(pcd):
     else:
         print("No points were picked.")
         return None
-def cal_point(pt_pcd,pickpoint):
-  #check X
-  P1={'P1':[pt_pcd[0]-pickpoint[0][0],pt_pcd[1]-pickpoint[0][1]]}
 #   print(P1.get('P1'))
 def check_in_zone(old_pick,coordinate_list,rotation_matrix,pcd):
     # print('old_pick',old_pick)
@@ -339,16 +268,12 @@ def media_pipe(intrinsics,frame,depth_frame):
             for idx, landmark in enumerate(results.pose_landmarks.landmark):
                 landmark_cx = int(landmark.x * w)
                 landmark_cy = int(landmark.y * h)
-                # print(landmark_cx)
-                # print(landmark_cy)
                 if 0 <= landmark_cx < w and 0 <= landmark_cy < h:
                     depth = depth_frame[landmark_cy, landmark_cx]   # Valid depth
                 else:
                     depth = 0
-                #     print(f"Warning: Landmark {idx} out of bounds: cx={landmark_cx}, cy={landmark_cy}")
-                # print(depth)
                 cv2.circle(frame, (landmark_cx, landmark_cy), radius=5, color=(0, 255, 0), thickness=-1)  # Green dot
-                cv2.putText(frame, f"{idx}", (landmark_cx + 10, landmark_cy - 10), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 255, 255), thickness=1)    
+                # cv2.putText(frame, f"{idx}", (landmark_cx + 10, landmark_cy - 10), cv2.FONT_HERSHEY_SIMPLEX, fontScale=0.5, color=(255, 255, 255), thickness=1)    
                 if len(land_mark_avg[idx][0]) >= 5:
                     if depth != 0:
                         land_mark_avg[idx][2].append(depth)
@@ -372,15 +297,8 @@ def media_pipe(intrinsics,frame,depth_frame):
                     'z': float(f'{pose_[2]:.2f}')
                 })
                 coord_text = f"{idx}: ({pose_[0]:.2f}, {pose_[1]:.2f}, {pose_[2]:.2f}m)"
-                cv2.putText(frame, coord_text, (landmark_cx + 10, landmark_cy - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
-                    # print(f"land_mark_rula : {land_mark_rula}")
-                    # coordinate_list.append({
-                    #     # 'landmark_id': idx, #ไม่ใส่ index ง่ายกว่า
-                    #     'x_real': real_x,
-                    #     'y_real': real_y,
-                    #     'z_real': real_z
-                    # })
+                # cv2.putText(frame, coord_text, (landmark_cx + 10, landmark_cy - 10),
+                #     cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
     return frame,collect_landmark
 
 def apply_red_overlay(frame, intensity=0.5):
@@ -430,18 +348,18 @@ def main():
                 normal_vec,d_plane=create_plane_by_pick(pcd)
                 pcd_out, rotation_matrix=align_floor_to_xz_plane(pcd,normal_vec,d_plane)
         #         # check one time is that plane aline
-        #         # visualization_draw_geometries([pcd_out,mesh])
+                visualization_draw_geometries([pcd_out,mesh])
                 rotate = True
             else:
                 rotation_matrix=rotation_matrix
                 pcd_out=pcd.rotate(rotation_matrix, center=(0, 0, 0))
-        current_time = time.time()
-        elapsed_time = current_time - prev_time
-        prev_time = current_time
+        # current_time = time.time()
+        # elapsed_time = current_time - prev_time
+        # prev_time = current_time
 
-        if elapsed_time > 0:
-            fps = 1.0 / elapsed_time
-            # cv2.putText(frame,f'FPS{fps}',(100,100),3,2,(255,255,0),3) 
+        # if elapsed_time > 0:
+        #     fps = 1.0 / elapsed_time
+        #     cv2.putText(frame,f'FPS{fps}',(100,100),3,2,(255,255,0),3) 
             
         if frame is None or depth_frame is None:
             continue  # Skip iteration if no valid frame
@@ -459,53 +377,66 @@ def main():
                     distance = list_ceterpcd - pt_pcd
                     list_ceterpcd= pt_pcd
                     
-            # print(type(pcd),f'pcd: {pcd}')
-            # print(type(marker),f'Marker: {marker}')
 
             if marker is not None:
-                pcd_out=combine_sphere__pcd(pcd_out,marker)
-                if find_ceter == False:
-                    A=pick_point_from_pcd(pcd_out)
-                    old_pick = A
+                pcd_out = combine_sphere__pcd(pcd_out, marker)
+
+                if not find_ceter:  # Pick point only once
+                    old_pick = pick_point_from_pcd(pcd_out)
+                    useold=[old_pick[0],old_pick[1],old_pick[2],old_pick[3]]
+                    for new_point in range(4):
+                        new = useold[new_point].copy()  # Create a new copy of the list
+                        new[1] = -0.3
+                        useold.append(new)
+                    points = useold
+                    lines = [
+                        [0, 1],
+                        [0, 2],
+                        [1, 3],
+                        [2, 3],
+                        [4, 5],
+                        [4, 6],
+                        [5, 7],
+                        [6, 7],
+                        [0, 4],
+                        [1, 5],
+                        [2, 6],
+                        [3, 7],
+                    ]
+                    colors = [[1, 0, 0] for i in range(len(lines))]
+                    line_set = o3d.geometry.LineSet(
+                        points=o3d.utility.Vector3dVector(points),
+                        lines=o3d.utility.Vector2iVector(lines),
+                    )
+                    line_set.colors = o3d.utility.Vector3dVector(colors)
+                    o3d.visualization.draw_geometries([pcd_out,line_set])
                     find_ceter = True
                 else:
-                    old_pick[0]=old_pick[0] - distance
-                    old_pick[1]=old_pick[1] - distance
-                    old_pick[2]=old_pick[2] - distance
-                    old_pick[3]=old_pick[3] - distance
-                    o1 = old_pick[0]
-                    o2 = old_pick[1]
-                    o3=old_pick[2]
-                    o4=old_pick[3]
-                    
-        # #             #-----------------------------------Vis marker----------------------------------------------------------
-                    marker1=create_marker_at(np.asarray(o1),radius=0.02, color=(1, 0, 0))
-                    marker2 =create_marker_at(np.asarray(o2),radius=0.02, color=(1, 1, 0))
-                    marker3=create_marker_at(np.asarray(o3),radius=0.02, color=(1, 0, 1))
-                    marker4=create_marker_at(np.asarray(o4),radius=0.02, color=(1, 0, 0.7))
-                    pcd_out=combine_sphere__pcd(pcd_out,marker1)
-                    pcd_out=combine_sphere__pcd(pcd_out,marker2)
-                    pcd_out=combine_sphere__pcd(pcd_out,marker3)
-                    pcd_out=combine_sphere__pcd(pcd_out,marker4)
+                    old_pick -= distance  # Use NumPy subtraction
 
-                    # visualization_draw_geometries([pcd_out])
-                    # pca=combine_sphere__pcd(pcb,marker1)
-                    # pcf=combine_sphere__pcd(pca,marker2)
-                    # pck=combine_sphere__pcd(pcf,marker3)
-                    # pcg=combine_sphere__pcd(pck,marker4)
-                    
-                    if coordinate_list != []:
-                         stage_danger=check_in_zone(old_pick,coordinate_list,rotation_matrix,pcd_out)
+                # Create markers in a loop
+                colors = [(1, 0, 0), (1, 1, 0), (1, 0, 1), (1, 0, 0.7)]
+                markers = [create_marker_at(np.asarray(pt), radius=0.02, color=c) for pt, c in zip(old_pick, colors)]
+                
+                # Combine all markers in one go
+                marker_pcd = o3d.geometry.PointCloud()
+                for m in markers:
+                    marker_pcd = combine_sphere__pcd(marker_pcd, m)
 
-                         if stage_danger is True or 0<count_danger<=6:
-                             media_frame = apply_red_overlay(media_frame, intensity=0.7)
-                             cv2.putText(media_frame, f"Danger", (100, 300), cv2.FONT_HERSHEY_SIMPLEX, fontScale=5, color=(255,0, 0), thickness=3)
-                             count_danger= count_danger+1
-                         if count_danger>0:
-                             count_danger = count_danger+1
-                         if count_danger ==6:
-                             count_danger=0
-                         
+                pcd_out = combine_sphere__pcd(pcd_out, marker_pcd)
+                    
+                if coordinate_list != []:
+                    stage_danger=check_in_zone(old_pick,coordinate_list,rotation_matrix,pcd_out)
+
+                    if stage_danger is True or 0<count_danger<=6:
+                        media_frame = apply_red_overlay(media_frame, intensity=0.7)
+                        cv2.putText(media_frame, f"Danger", (100, 300), cv2.FONT_HERSHEY_SIMPLEX, fontScale=5, color=(255,0, 0), thickness=3)
+                        count_danger= count_danger+1
+                    if count_danger>0:
+                        count_danger = count_danger+1
+                    if count_danger ==6:
+                        count_danger=0
+                        
         coundt_rt= coundt_rt+1
         # Show RGB and Depth frames
         cv2.imshow("media_frame", media_frame)
@@ -524,24 +455,6 @@ def main():
 # Run the script
 if __name__ == "__main__":
     main()
-    # config_path = r'C:/Users/pan/Desktop/pyk4a/Depth_map/config.json'
-    # kinectsensor = initialize_kinect(config_path)
-    # intrin_path = r'C:/Users/pan/Desktop/pyk4a/Depth_map/intrin.json'
-    # intrin = o3d.io.read_pinhole_camera_intrinsic(intrin_path)
-    # while True:
-    #     frame, coordinate_list = media_pipe(intrin, kinectsensor)
 
-    #     if frame is not None and coordinate_list is not None:
-    #         for landmark  in coordinate_list:
-    #             print(float(landmark['x_real'][0]))
-    #         print('coordinate_list:', coordinate_list)
-    #         cv2.imshow('MediaPipe Frame', frame)
-
-    #     key = cv2.waitKey(1) & 0xFF
-    #     if key == ord('q'):
-    #         break
-
-    # cv2.destroyAllWindows()
-         
         
         
